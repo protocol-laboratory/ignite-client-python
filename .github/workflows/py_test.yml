@@ -1,0 +1,16 @@
+name: Unit Test
+on:
+  pull_request:
+    branches:
+      - main
+jobs:
+  py_test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: pip3 install -r requirements.txt
+      - name: setup ignite
+        uses: shoothzj/setup-ignite-action@main
+      - name: Run unit tests
+        run: python -m unittest discover ignite_client  -p '*_test.py'
