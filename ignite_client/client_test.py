@@ -1,7 +1,8 @@
 import unittest
 
-from .client import IgniteClient
-from .protocol import HandshakeRequest, HandshakeSuccess, HandshakeFailed, QuerySqlFieldsRequest, StatementType
+from ignite_client.client import IgniteClient
+from ignite_client.protocol import HandshakeRequest, HandshakeSuccess, HandshakeFailed, QuerySqlFieldsRequest, \
+    StatementType
 
 
 class TestIgniteClient(unittest.IsolatedAsyncioTestCase):
@@ -45,7 +46,6 @@ class TestIgniteClient(unittest.IsolatedAsyncioTestCase):
             include_field_names=True
         )
         response = await self.client.query_sql_fields(request)
-
         assert len(response.column_names) > 0
 
 
