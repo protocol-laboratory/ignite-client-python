@@ -50,6 +50,23 @@ class IgniteClient:
             return response.body
         raise Exception("Unexpected response type")
 
+    async def query_sql_fields_cursor_get_page(self, cursor_id: int, column_count: int):
+        if self.writer is None or self.reader is None:
+            raise ConnectionError("Client is not connected")
+
+        request_id = self.request_id.increment()
+        encoded_request = Request.new_query_sql_fields_cursor_get_page(request_id, cursor_id).encode()
+        self.writer.write(encoded_request)
+        await self.writer.drain()
+
+        response = await self._read_response(
+            lambda data: Response.decode_query_sql_fields_cursor_get_page(data, column_count)
+        )
+        if response.status_code != 0:
+            raise Exception(f"Error: {response.error_message}")
+
+        return response.body
+
     async def resource_close(self, resource_id: int):
         if self.writer is None or self.reader is None:
             raise ConnectionError("Client is not connected")

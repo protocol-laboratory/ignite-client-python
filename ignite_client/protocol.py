@@ -162,6 +162,7 @@ class QuerySqlFieldsResponse:
     column_count: int
     column_names: List[str]
     first_page_row_count: int
+    data: List[List[Any]]
     has_more: bool
 
     @staticmethod
@@ -177,6 +178,7 @@ class QuerySqlFieldsResponse:
                 column_names.append(column_name)
 
         first_page_row_count, offset = read_int(data, offset)
+        matrix, offset = read_matrix(data, offset, first_page_row_count, column_count)
         has_more, offset = read_bool(data, offset)
 
         return QuerySqlFieldsResponse(
@@ -184,6 +186,7 @@ class QuerySqlFieldsResponse:
             column_count=column_count,
             column_names=column_names,
             first_page_row_count=first_page_row_count,
+            data=matrix,
             has_more=has_more
         )
 
@@ -205,19 +208,23 @@ class QuerySqlFieldsCursorGetPageRequest:
 @dataclass
 class QuerySqlFieldsCursorGetPageResponse:
     row_count: int
+    data: List[List[Any]]
+    has_more: bool
 
     @staticmethod
-    def decode(data: bytes) -> 'QuerySqlFieldsCursorGetPageResponse':
+    def decode(data: bytes, column_count: int) -> 'QuerySqlFieldsCursorGetPageResponse':
         offset = 0
         row_count, offset = read_int(data, offset)
-        return QuerySqlFieldsCursorGetPageResponse(row_count)
+        matrix, offset = read_matrix(data, offset, row_count, column_count)
+        has_more, offset = read_bool(data, offset)
+        return QuerySqlFieldsCursorGetPageResponse(row_count, matrix, has_more)
 
 
 @dataclass
 class Request:
     op_code: int
     request_id: int
-    body: Union[ResourceCloseRequest, QuerySqlFieldsRequest]
+    body: Union[ResourceCloseRequest, QuerySqlFieldsRequest, QuerySqlFieldsCursorGetPageRequest]
 
     @staticmethod
     def new_resource_close(request_id: int, resource_id: int) -> 'Request':
@@ -233,6 +240,14 @@ class Request:
             op_code=OpConst.QUERY_SQL_FIELDS,
             request_id=request_id,
             body=query_sql_fields_request
+        )
+
+    @staticmethod
+    def new_query_sql_fields_cursor_get_page(request_id: int, cursor_id: int) -> 'Request':
+        return Request(
+            op_code=OpConst.QUERY_SQL_FIELDS_CURSOR_GET_PAGE,
+            request_id=request_id,
+            body=QuerySqlFieldsCursorGetPageRequest(cursor_id)
         )
 
     def encode(self) -> bytes:
@@ -290,13 +305,13 @@ class Response:
         )
 
     @staticmethod
-    def decode_query_sql_fields_cursor_get_page(data: bytes) -> 'Response':
+    def decode_query_sql_fields_cursor_get_page(data: bytes, column_count: int) -> 'Response':
         request_id, status_code, error_message, offset = Response.decode_common(data)
 
         if status_code != 0:
             body = None
         else:
-            body = QuerySqlFieldsCursorGetPageResponse.decode(data[offset:])
+            body = QuerySqlFieldsCursorGetPageResponse.decode(data[offset:], column_count)
 
         return Response(
             request_id=request_id,
@@ -304,6 +319,38 @@ class Response:
             error_message=error_message,
             body=body
         )
+
+
+def read_matrix(data: bytes, offset: int, first_page_row_count: int, column_count: int) -> (list, int):
+    matrix = []
+    for _ in range(first_page_row_count):
+        row = []
+        for _ in range(column_count):
+            type_code, offset = read_byte(data, offset)
+            if type_code == 1:
+                value, offset = read_byte(data, offset)
+                row.append(value)
+            elif type_code == 2:
+                value, offset = read_short(data, offset)
+                row.append(value)
+            elif type_code == 3:
+                value, offset = read_int(data, offset)
+                row.append(value)
+            elif type_code == 4:
+                value, offset = read_long(data, offset)
+                row.append(value)
+            elif type_code == 8:
+                value, offset = read_bool(data, offset)
+                row.append(value)
+            elif type_code == 9:
+                value, offset = read_string_no_type(data, offset)
+                row.append(value)
+            elif type_code == 101:
+                pass
+            else:
+                raise Exception(f"Unexpected type code: {type_code}")
+        matrix.append(row)
+    return matrix, offset
 
 
 def put_string(buffer: bytearray, offset: int, value: str) -> int:
@@ -316,6 +363,12 @@ def put_string(buffer: bytearray, offset: int, value: str) -> int:
 
 def read_string(data: bytes, offset: int) -> (str, int):
     _, offset = read_byte(data, offset)
+    length, offset = read_int(data, offset)
+    value = data[offset:offset + length].decode('utf-8')
+    return value, offset + length
+
+
+def read_string_no_type(data: bytes, offset: int) -> (str, int):
     length, offset = read_int(data, offset)
     value = data[offset:offset + length].decode('utf-8')
     return value, offset + length
