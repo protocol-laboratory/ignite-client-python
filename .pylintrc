@@ -1,6 +1,17 @@
 [MASTER]
 ignore=static,.git
 [MESSAGES CONTROL]
-disable=broad-exception-raised,fixme,invalid-name,missing-module-docstring,missing-class-docstring,missing-function-docstring,raise-missing-from,too-many-instance-attributes,too-few-public-methods,too-many-arguments,unused-wildcard-import
+disable=
+    broad-exception-raised,
+    fixme,
+    invalid-name,
+    missing-module-docstring,
+    missing-class-docstring,
+    missing-function-docstring,
+    raise-missing-from,
+    too-many-instance-attributes,
+    too-few-public-methods,
+    too-many-arguments,
+    too-many-branches,
 [FORMAT]
 max-line-length=120

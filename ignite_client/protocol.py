@@ -1,3 +1,4 @@
+import struct
 from dataclasses import dataclass
 from enum import Enum
 from typing import Union, List, Any, Optional
@@ -339,11 +340,20 @@ def read_matrix(data: bytes, offset: int, first_page_row_count: int, column_coun
             elif type_code == 4:
                 value, offset = read_long(data, offset)
                 row.append(value)
+            elif type_code == 5:
+                value, offset = read_float(data, offset)
+                row.append(value)
+            elif type_code == 6:
+                value, offset = read_double(data, offset)
+                row.append(value)
             elif type_code == 8:
                 value, offset = read_bool(data, offset)
                 row.append(value)
             elif type_code == 9:
                 value, offset = read_string_no_type(data, offset)
+                row.append(value)
+            elif type_code == 12:
+                value, offset = read_bytes(data, offset)
                 row.append(value)
             elif type_code == 101:
                 row.append(None)
@@ -381,17 +391,18 @@ def put_bytes(buffer: bytearray, offset: int, value: bytes) -> int:
 
 def read_bytes(data: bytes, offset: int) -> (bytes, int):
     length, offset = read_int(data, offset)
-    return data[offset:offset + length], offset + length
+    value = data[offset:offset + length]
+    return value, offset + length
 
 
-def put_long(buffer: bytearray, offset: int, value: int) -> int:
-    buffer[offset:offset + 8] = value.to_bytes(8, byteorder='little', signed=True)
-    return offset + 8
+def put_short(buffer: bytearray, offset: int, value: int) -> int:
+    buffer[offset:offset + 2] = value.to_bytes(2, byteorder='little', signed=True)
+    return offset + 2
 
 
-def read_long(data: bytes, offset: int) -> (int, int):
-    value = int.from_bytes(data[offset:offset + 8], byteorder='little', signed=True)
-    return value, offset + 8
+def read_short(data: bytes, offset: int) -> (int, int):
+    value = int.from_bytes(data[offset:offset + 2], byteorder='little', signed=True)
+    return value, offset + 2
 
 
 def put_int(buffer: bytearray, offset: int, value: int) -> int:
@@ -404,14 +415,24 @@ def read_int(data: bytes, offset: int) -> (int, int):
     return value, offset + 4
 
 
-def put_short(buffer: bytearray, offset: int, value: int) -> int:
-    buffer[offset:offset + 2] = value.to_bytes(2, byteorder='little', signed=True)
-    return offset + 2
+def put_long(buffer: bytearray, offset: int, value: int) -> int:
+    buffer[offset:offset + 8] = value.to_bytes(8, byteorder='little', signed=True)
+    return offset + 8
 
 
-def read_short(data: bytes, offset: int) -> (int, int):
-    value = int.from_bytes(data[offset:offset + 2], byteorder='little', signed=True)
-    return value, offset + 2
+def read_long(data: bytes, offset: int) -> (int, int):
+    value = int.from_bytes(data[offset:offset + 8], byteorder='little', signed=True)
+    return value, offset + 8
+
+
+def read_float(data: bytes, offset: int) -> (float, int):
+    value = struct.unpack('<f', data[offset:offset + 4])[0]
+    return value, offset + 4
+
+
+def read_double(data: bytes, offset: int) -> (float, int):
+    value = struct.unpack('<d', data[offset:offset + 8])[0]
+    return value, offset + 8
 
 
 def put_bool(buffer: bytearray, offset: int, value: bool) -> int:
