@@ -346,7 +346,7 @@ def read_matrix(data: bytes, offset: int, first_page_row_count: int, column_coun
                 value, offset = read_string_no_type(data, offset)
                 row.append(value)
             elif type_code == 101:
-                pass
+                row.append(None)
             else:
                 raise Exception(f"Unexpected type code: {type_code}")
         matrix.append(row)
@@ -377,6 +377,11 @@ def read_string_no_type(data: bytes, offset: int) -> (str, int):
 def put_bytes(buffer: bytearray, offset: int, value: bytes) -> int:
     buffer[offset:offset + len(value)] = value
     return offset + len(value)
+
+
+def read_bytes(data: bytes, offset: int) -> (bytes, int):
+    length, offset = read_int(data, offset)
+    return data[offset:offset + length], offset + length
 
 
 def put_long(buffer: bytearray, offset: int, value: int) -> int:
